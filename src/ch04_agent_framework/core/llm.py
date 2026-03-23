@@ -1,7 +1,7 @@
 import os
 from dotenv import load_dotenv
 from openai import OpenAI
-from typing import List, Dict,Optional
+from typing import Iterator, List, Dict,Optional
 
 # 加载配置
 load_dotenv()
@@ -27,7 +27,7 @@ class HelloAgentsLLM:
             raise ValueError("ModelScpoe API key not found. Please set MODELSCOPE_API_KEY environment variable.")
         
         # 设置默认模型和其他参数
-        self.model = model or os.getenv("MODEL")
+        self.model = model or os.getenv("MODEL_ID")
         self.temperature = kwargs.get("temperature", 0.7)
         self.max_tokens = kwargs.get('max_tokens')
         self.timeout = kwargs.get('timeout', 60)
@@ -61,30 +61,31 @@ class HelloAgentsLLM:
             print(f"❌️ 调用LLM API时发生错误：{e}")
             return None
         
-    # def invoke(self, messages: list[dict[str, str]], **kwargs) -> str:
-    #     """
-    #     非流式调用LLM，返回完整响应。
-    #     适用于不需要流式输出的场景。
-    #     """
-    #     try:
-    #         response = self._client.chat.completions.create(
-    #             model=self.model,
-    #             messages=messages,
-    #             temperature=kwargs.get('temperature', self.temperature),
-    #             max_tokens=kwargs.get('max_tokens', self.max_tokens),
-    #             **{k: v for k, v in kwargs.items() if k not in ['temperature', 'max_tokens']}
-    #         )
-    #         return response.choices[0].message.content
-    #     except Exception as e:
-    #         raise HelloAgentsException(f"LLM调用失败: {str(e)}")
+    def invoke(self, messages: list[dict[str, str]], **kwargs) -> str:
+        """
+        非流式调用LLM，返回完整响应。
+        适用于不需要流式输出的场景。
+        """
+        try:
+            response = self._client.chat.completions.create(
+                model=self.model,
+                messages=messages,
+                temperature=kwargs.get('temperature', self.temperature),
+                max_tokens=kwargs.get('max_tokens', self.max_tokens),
+                **{k: v for k, v in kwargs.items() if k not in ['temperature', 'max_tokens']}
+            )
+            return response.choices[0].message.content
+        except Exception as e:
+            # raise HelloAgentsException(f"LLM调用失败: {str(e)}")
+            return f"LLM调用失败: {str(e)}"
 
-    # def stream_invoke(self, messages: list[dict[str, str]], **kwargs) -> Iterator[str]:
-    #     """
-    #     流式调用LLM的别名方法，与think方法功能相同。
-    #     保持向后兼容性。
-    #     """
-    #     temperature = kwargs.get('temperature')
-    #     yield from self.think(messages, temperature)    
+    def stream_invoke(self, messages: list[dict[str, str]], **kwargs) -> Iterator[str]:
+        """
+        流式调用LLM的别名方法，与think方法功能相同。
+        保持向后兼容性。
+        """
+        temperature = kwargs.get('temperature')
+        yield from self.think(messages, temperature)    
     
     
 if __name__ == "__main__":
