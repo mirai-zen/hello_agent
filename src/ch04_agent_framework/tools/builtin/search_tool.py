@@ -18,7 +18,7 @@ class SearchTool(Tool):
             description="一个智能网页搜索引擎。支持混合搜索模式，自动选择最佳搜索源。"
         )
         self.backend = backend
-        self.tavily_key = tavily_key or os.getenv("TAVILY_API_KEY")
+        self.tavily_key = tavily_key or os.getenv("TAVILY_KEY")
         self.serpapi_key = serpapi_key or os.getenv("SERPAPI_API_KEY")
         self.available_backends = []
         # TODO 待完成
@@ -165,3 +165,8 @@ class SearchTool(Tool):
         return result
 
         
+    def get_parameters(self) -> Dict[str, Any]:
+        return {
+            "input": {"type": "string", "description": "搜索查询"},
+            "backend": {"type": "string", "description": "搜索后端类型", "default": "hybrid"}
+        }

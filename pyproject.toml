@@ -20,6 +20,7 @@ packages = [
   "ch01_simple_agent",
   "ch02_llm_agent",
   "ch03_framework_demo",
+  "ch04_agent_framework",
 ]  # 只声明1个顶级包（核心！）
 package-dir = {""= "src"}  # 包路径映射
 

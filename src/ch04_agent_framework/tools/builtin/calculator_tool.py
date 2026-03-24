@@ -38,9 +38,11 @@ def _eval_node(node,operators,functions):
         right = _eval_node(node.right,operators,functions)
         op = operators.get(type(node.op))
         return op(left,right)
-    elif isinstance(node,ast.Call):
-        if node.id in functions:
-            return functions[node.id]
+    elif isinstance(node, ast.Call):
+        func_name = node.func.id if isinstance(node.func, ast.Name) else None
+        if func_name in functions:
+            args = [_eval_node(arg, operators, functions) for arg in node.args]
+            return functions[func_name](*args)
         
 def create_calculator_registry():
     registry = ToolRegistry()
