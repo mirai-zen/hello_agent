@@ -1,7 +1,7 @@
-from .base import BaseTool
+from .base import Tool
 from .registry import ToolRegistry
 
 __all__ = [
-    "BaseTool",
+    "Tool",
     "ToolRegistry",
 ]

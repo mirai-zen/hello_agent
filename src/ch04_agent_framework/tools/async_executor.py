@@ -1,44 +1,81 @@
 
-from typing import List, Dict, Any
+import asyncio
+from ch04_agent_framework.tools.registry import ToolRegistry
+import concurrent.futures
+from typing import List,Dict
+from ch04_agent_framework.tools.builtin import calculate,SearchTool
 
-class ToolChain:
-    def __init__(self,name: str,description: str):
-        self.name = name
-        self.description = description
-        self.steps: List[Dict[str, Any]] = []
+
+# 异步工具执行器
+class AsyncToolExecutor:
+    def __init__(self, registry: ToolRegistry, max_workers: int = 4):
+        self.registry = registry
+        self.executor = concurrent.futures.ThreadPoolExecutor(max_workers=max_workers)
         
-    def add_step(self,tool_name: str,input_template: str,output_key:str=None):
-        self.steps.append({
-            "tool_name": tool_name,
-            "input_template": input_template,
-            "output_key": output_key or f"step_{len(self.steps)}_result"
-        })
+    async def execute_tool_async(self,tool_name:str,input_data:str) -> str:
+        """异步执行单个工具"""
+        loop = asyncio.get_event_loop()
+
+        def _execute():
+            return self.registry.execute_tool(tool_name, input_data)
+
+        result = await loop.run_in_executor(self.executor,_execute)
+        return result
+    
+    async def execute_tools_parallel(self,tasks: List[Dict[str,str]]) -> List[str]:
+        """并行执行多个工具"""
+        print(f"🚀 开始并行执行 {len(tasks)} 个工具任务")
+
+         # 创建异步任务
+        async_tasks = []
+        for task in tasks:
+            tool_name = task["tool_name"]
+            input_data = task["input_data"]
+            async_task = self.execute_tool_async(tool_name, input_data)
+            async_tasks.append(async_task)
+
+        # 等待所有任务完成
+        results = await asyncio.gather(*async_tasks)
+
+        print(f"✅ 所有工具任务执行完成")
+        return results
+    
+    def __del__(self):
+        """清理资源"""
+        if hasattr(self, 'executor'):
+            self.executor.shutdown(wait=True)
+
+
+# 使用示例
+async def test_parallel_execution():
+    """测试并行工具执行"""
+    from hello_agents import ToolRegistry
+
+    registry = ToolRegistry()
+    # 假设已经注册了搜索和计算工具
+    tool = SearchTool(
+        backend="hybrid",
+    )
+    registry.register_tool(tool)
+    registry.register_function("my_calculator", "计算器", calculate)
+
+    executor = AsyncToolExecutor(registry)
+
+    # 定义并行任务
+    tasks = [
+        {"tool_name": "search", "input_data": "Python编程"},
+        {"tool_name": "search", "input_data": "机器学习"},
+        {"tool_name": "my_calculator", "input_data": "2 + 2"},
+        {"tool_name": "my_calculator", "input_data": "sqrt(16)"},
+    ]
+
+    # 并行执行
+    results = await executor.execute_tools_parallel(tasks)
+
+    for i, result in enumerate(results):
+        print(f"任务 {i+1} 结果: {result[:100]}...")
         
-    def execute(self,registry: ToolRegistry, initial_input:str,context: Dict[str,Any] = None) -> str:
-        context = context or {}
-        context['input'] = initial_input
-        
-        print(f"🔗 开始执行工具链: {self.name}")
 
-        for i, step in enumerate(self.steps,1):
-            tool_name = step["tool_name"]
-            input_template = step["input_template"]
-            output_key = step['output_key']
-            
-            try:
-                tool_input = input_template.format(**context)
-            except KeyError as e:
-                return f"❌ 工具链执行失败:模板变量 {e} 未找到"
-
-            print(f"  步骤 {i}: 使用 {tool_name} 处理 '{tool_input[:50]}...'")
-
-            # 执行工具
-            result = registry.execute_tool(tool_name, tool_input)
-            context[output_key] = result
-
-            print(f"  ✅ 步骤 {i} 完成，结果长度: {len(result)} 字符")
-
-        # 返回最后一步的结果
-        final_result = context[self.steps[-1]["output_key"]]
-        print(f"🎉 工具链 '{self.name}' 执行完成")
-        return final_result
+if __name__ == "__main__":
+    asyncio.run(test_parallel_execution())
+    
