@@ -1,6 +1,6 @@
 import os
 from typing import Any, Dict, Optional
-from hello_agents.tools import Tool
+from .. import Tool
 
 class SearchTool(Tool):
     """
